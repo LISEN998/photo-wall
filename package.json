@@ -1,0 +1,15 @@
+{
+  "name": "photo-wall",
+  "version": "1.0.0",
+  "description": "零配置照片墙播放系统",
+  "main": "index.html",
+  "scripts": {
+    "serve": "npx http-server -p 8080",
+    "open": "start index.html || open index.html || xdg-open index.html"
+  },
+  "keywords": ["photo-wall", "slideshow", "presentation"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

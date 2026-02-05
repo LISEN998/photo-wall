@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>照片墙 - 大屏播放系统</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 文件列表配置 -->
+    <script src="file-list.js"></script>
+    <style>
+        /* 内联关键CSS，确保加载速度 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #000; 
+            color: white; 
+            overflow: hidden; 
+            height: 100vh; 
+        }
+        #loading { 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: #000; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 9999; 
+        }
+        .spinner { 
+            width: 50px; height: 50px; 
+            border: 5px solid rgba(255,255,255,0.3); 
+            border-radius: 50%; 
+            border-top-color: #4dabf7; 
+            animation: spin 1s linear infinite; 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-text { margin-top: 20px; font-size: 18px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- 加载画面 -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">正在加载照片和音乐...</div>
+    </div>
+
+    <!-- 主界面（默认隐藏） -->
+    <div id="main-interface" class="hidden">
+        <!-- 顶部信息栏 -->
+        <div class="top-bar">
+            <div id="clock" class="clock">00:00:00</div>
+            <div class="title">照片墙展示系统</div>
+            <div id="photo-info" class="photo-info">准备播放...</div>
+        </div>
+
+        <!-- 主照片区域 -->
+        <div class="container">
+            <div id="photo-wall" class="photo-wall">
+                <!-- 图片通过JS动态加载 -->
+            </div>
+            
+            <!-- 进度条 -->
+            <div id="progress-bar" class="progress-container">
+                <div class="progress"></div>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="control-group">
+                <button id="play-pause" class="control-btn" title="播放/暂停 (空格键)">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button id="prev-btn" class="control-btn" title="上一张 (← 左箭头)">
+                    <i class="fas fa-backward"></i>
+                </button>
+                <button id="next-btn" class="control-btn" title="下一张 (→ 右箭头)">
+                    <i class="fas fa-forward"></i>
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <label for="interval-range">速度:</label>
+                <input type="range" id="interval-range" min="1" max="30" value="3">
+                <span id="interval-value">3秒</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="transition-select">效果:</label>
+                <select id="transition-select">
+                    <option value="fade">淡入淡出</option>
+                    <option value="slide-right">滑动</option>
+                    <option value="zoom">缩放</option>
+                    <option value="rotate">旋转</option>
+                    <option value="blur">模糊</option>
+                    <option value="random">随机</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="volume-range">音量:</label>
+                <input type="range" id="volume-range" min="0" max="100" value="50">
+                <button id="mute-btn" class="control-btn" title="静音 (M键)">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <span id="counter">0/0</span>
+                <span id="status" class="status">准备就绪</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="fullscreen-btn" class="control-btn" title="全屏 (F11)">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button id="help-btn" class="control-btn" title="使用说明">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 音频播放器 -->
+        <audio id="bgm" loop preload="auto"></audio>
+        
+        <!-- 键盘快捷键提示 -->
+        <div id="keyboard-help" class="keyboard-help hidden">
+            <h3>键盘快捷键</h3>
+            <ul>
+                <li><kbd>空格键</kbd> 播放/暂停</li>
+                <li><kbd>← →</kbd> 上一张/下一张</li>
+                <li><kbd>F11</kbd> 全屏</li>
+                <li><kbd>M</kbd> 静音</li>
+                <li><kbd>ESC</kbd> 退出全屏</li>
+            </ul>
+            <button id="close-help">知道了</button>
+        </div>
+    </div>
+
+    <!-- 没有资源的提示 -->
+    <div id="no-resources" class="modal hidden">
+        <div class="modal-content">
+            <h2><i class="fas fa-exclamation-triangle"></i> 提示</h2>
+            <div class="help-content">
+                <p>没有找到照片或音乐文件。</p>
+                <p><strong>使用方法：</strong></p>
+                <ol>
+                    <li>将照片文件（JPG、PNG等）放入 <strong>assets/photos/</strong> 文件夹</li>
+                    <li>将音乐文件（MP3、WAV等）放入 <strong>assets/music/</strong> 文件夹</li>
+                    <li>刷新本页面即可开始播放</li>
+                </ol>
+                <p><em>或者，您现在可以使用示例内容进行预览：</em></p>
+                <div class="modal-buttons">
+                    <button id="use-demo" class="btn-primary">
+                        <i class="fas fa-play-circle"></i> 使用示例内容预览
+                    </button>
+                    <button id="reload-page" class="btn-secondary">
+                        <i class="fas fa-redo"></i> 重新检查文件
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用说明 -->
+    <div id="instructions" class="modal hidden">
+        <div class="modal-content">
+            <h2><i class="fas fa-info-circle"></i> 使用说明</h2>
+            <div class="help-content">
+                <h3><i class="fas fa-images"></i> 添加照片</h3>
+                <p>将照片文件复制到 <code>assets/photos/</code> 文件夹即可。</p>
+                
+                <h3><i class="fas fa-music"></i> 添加音乐</h3>
+                <p>将音乐文件复制到 <code>assets/music/</code> 文件夹即可。</p>
+                
+                <h3><i class="fas fa-cogs"></i> 如何操作</h3>
+                <ul>
+                    <li>点击播放按钮或按<kbd>空格键</kbd>开始</li>
+                    <li>点击全屏按钮或按<kbd>F11</kbd>进入全屏</li>
+                    <li>按<kbd>ESC</kbd>退出全屏</li>
+                    <li>添加新文件后，刷新页面即可生效</li>
+                </ul>
+                
+                <div class="tips">
+                    <p><strong>温馨提示：</strong></p>
+                    <ul>
+                        <li>支持的照片格式：JPG、PNG、GIF、WebP、BMP</li>
+                        <li>支持的音乐格式：MP3、WAV、OGG、M4A</li>
+                        <li>建议照片尺寸：1920×1080或更大</li>
+                        <li>系统会自动按文件名排序播放</li>
+                    </ul>
+                </div>
+            </div>
+            <button id="close-instructions" class="btn-primary">开始使用</button>
+        </div>
+    </div>
+
+    <!-- 主程序 -->
+    <script src="script.js"></script>
+</body>
+</html>
